@@ -6,6 +6,11 @@
 [ORG 0x7c00]      ; add to offsets
 xor ax,ax
 mov ds,ax
+mov ax, 0x9000
+mov ss, ax
+mov ax, 0xFFFF ; 65536 bytes of stack, stack will be changed later when all is ok
+mov sp, ax
+mov bp, ax
 
 
 reset_drive:
