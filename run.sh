@@ -1,0 +1,1 @@
+qemu-system-x86_64 -drive file=floppy.flp,format=raw,if=floppy
