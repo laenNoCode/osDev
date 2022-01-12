@@ -1,4 +1,4 @@
-[org 0x1000]
+[ORG 0X1000]
 [bits 16]
 %define STACK_32 7000000
 jmp teste
@@ -14,7 +14,7 @@ db 0xff, 0xff, 0, 0, 0, 0b11110010, 0b11001111, 0; data segment, 0x20, ring 3 or
 GDT_POINTER:
 	magie_vaudou:
 		dw GDT_POINTER - Global_Descriptor_Table_32 - 1
-		dq Global_Descriptor_Table_32
+		dd Global_Descriptor_Table_32
 
 
 
@@ -28,6 +28,8 @@ teste:
 	mov cr0,eax
 	jmp 0x8:pmode
 [bits 32]
+
+
 pmode:
 	mov eax, 0x10
 	mov ds,ax
@@ -42,6 +44,7 @@ pmode:
 	mov dx,4
 	;mov byte [0xB8000], 'H'
 	call print_register
+	call 0X1800
 	jmp hang
 
 
@@ -111,3 +114,5 @@ tmp_data: dw 0
 
 
 times 4*512 - ($ -$$)  - 1 db 0x0
+db 0xFF
+;next address will be located at 0x1800
