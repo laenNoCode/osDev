@@ -10,7 +10,7 @@
 
 xor ax,ax
 mov ds,ax
-mov ax, 0x9000
+mov ax, 0x7000
 mov ss, ax
 mov ax, 0xFFFF ; 65536 bytes of stack, stack will be changed later when all is ok
 mov sp, ax
@@ -142,7 +142,7 @@ goto_second_stage:;resets t
 		int 0x13
 	jc reset_floppy
 	load_floppy_code:
-		mov ax,0x1000 ;code will go into 1000h
+		mov ax,0x100 ;code will go into 1000h
 		mov es,ax
 		xor bx,bx
 		mov ah, 0x2
@@ -151,7 +151,7 @@ goto_second_stage:;resets t
 		mov dl,0;first floppy
 		mov al, 4;number of sectors to load
 		int 0x13
-	jmp 0x1000:0x0000
+	jmp 0x000:0x1000
 ;checks the floppy data :
 
 ;        mov ah,0 ; reset drive
