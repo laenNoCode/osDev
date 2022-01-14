@@ -1,9 +1,6 @@
 [bits 32]
 section .text
-extern print_w
-works:
-	call print_w
-	ret
+%include "nasm/includes/interrupts.nasm"
 
-times 1*512 - ($ -$$)  - 1 db 0x0
+times 15*512 - ($ -$$)  - 1 db 0x0
 db 0xFF

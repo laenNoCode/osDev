@@ -149,7 +149,7 @@ goto_second_stage:;resets t
 		mov ch,0;first cylinder
 		mov cl,2;second sector
 		mov dl,0;first floppy
-		mov al, 20;number of sectors to load
+		mov al, 54;number of sectors to load
 		int 0x13
 	jmp 0x000:0x1000
 ;checks the floppy data :
