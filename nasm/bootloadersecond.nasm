@@ -43,11 +43,9 @@ pmode:
 	mov cl,0x40
 	mov dx,4
 	mov al, 0x10
-	out 0x70, al ;read floppy type from CMOS
-	in al,0x71
 	call print_register
 	call 0X1800
-	
+
 	jmp hang
 
 

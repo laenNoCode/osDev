@@ -1,0 +1,5 @@
+floppy.flp
+floppy/*
+bin/*
+bochs*
+.idea

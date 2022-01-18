@@ -1,3 +1,20 @@
+#define INIT_0X81 0
+#define CHANGE_CURSOR_COLOR_0X81 1
+#define WRITE_SINGLE_0X81 2
+#define WRITE_BUFFER_0x81 3
+
+#define SET_LINE_0x81 4
+
+#define DEFAULT_TEXT_COLOR 0x02
+
+#define VIDEO_MEM_START (int*) 0x7000004
+#define CURRENT_LINE_OFFSET 0
+#define COLOR_OFFSET 1
+#define CURRENT_ADDRESS_OFFSET 2
+#define TEXT_OFFSET 3
+
+
+#define MAX_TEXT_ADDRESS 0x7100004
 void __c_interrupt_0(){}
 void __c_interrupt_1(){}
 void __c_interrupt_2(){}
@@ -5,7 +22,7 @@ void __c_interrupt_3(){}
 void __c_interrupt_4(){}
 void __c_interrupt_5(){}
 void __c_interrupt_6(){
-	__asm__("movw $0xB8010, %EBX");
+	__asm__("movl $0xB8010, %EBX");
 	__asm__("movb $'T',(%EBX) ");
 }
 void __c_interrupt_7(){}
@@ -15,7 +32,7 @@ void __c_interrupt_10(){}
 void __c_interrupt_11(){}
 void __c_interrupt_12(){}
 void __c_interrupt_13(){
-	__asm__("movw $0xB800C, %EBX");
+	__asm__("movl $0xB800C, %EBX");
 	__asm__("movb $'e',(%EBX) ");
 }
 void __c_interrupt_14(){}
@@ -132,11 +149,78 @@ void __c_interrupt_124(){}
 void __c_interrupt_125(){}
 void __c_interrupt_126(){}
 void __c_interrupt_127(){}
-void __c_interrupt_128(){
-	__asm__("movw $0xB800E, %EBX");
-	__asm__("movb $'i',(%EBX) ");
+int __c_interrupt_128(int opcode,int opcode2){
+	opcode += 1;
+	__asm__("movl $0xB8010, %EBX");
+	__asm__("movl 0x08(%ebp), %eax");
+	__asm__("movb %al,(%EBX) ");
+	__asm__("movl 0x0C(%ebp), %eax");
+	__asm__("movb %al,1(%EBX) ");
+	return opcode;
 }
-void __c_interrupt_129(){}
+
+void writeToScreenBuffer(int what){
+	short* current_position = (short*)*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET);
+	int line = *(VIDEO_MEM_START + CURRENT_LINE_OFFSET);
+	*(current_position++) = (short) (*(VIDEO_MEM_START + COLOR_OFFSET) + ((char) what));
+	*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = (int) current_position;
+	int line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
+	while ( (int)current_position - line_mem_position >= 80*25*2 ){
+		line ++;
+		*(VIDEO_MEM_START + CURRENT_LINE_OFFSET) = line;
+		line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
+	}
+}
+void writeScreenBufferToScreen(){
+	//write actual data to screen
+		//text offset is the start of the memory, but used in init for current position
+		int line = *(VIDEO_MEM_START + CURRENT_LINE_OFFSET);
+		int line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
+		short* text_memory = (short*) line_mem_position;
+		short* screen_memory = (short*)0xB8000;
+		for (int i = 0; i < 80*25; i++){
+			*(screen_memory++) = *(text_memory ++);
+		}
+}
+void __c_interrupt_129(int opcode,  int what, int count){
+	if (opcode == CHANGE_CURSOR_COLOR_0X81){
+		*(VIDEO_MEM_START + COLOR_OFFSET) = what * 256;
+	}
+	if (opcode == WRITE_SINGLE_0X81){
+		writeToScreenBuffer(what);
+		writeScreenBufferToScreen();
+	}
+	if (opcode == WRITE_BUFFER_0x81){
+		char* whatPos = (char*) what;
+		for (int i = 0; i < count; i++){
+			char toPrint = whatPos[i];
+			if (toPrint == 0){
+				break;
+			}
+			else if (toPrint == '\n'){
+				int currentAddress =(int) *(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET);
+				currentAddress += 80*2 - (currentAddress - (int) (VIDEO_MEM_START + TEXT_OFFSET)) % (80*2);
+				*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = currentAddress;
+			}
+			else{
+				writeToScreenBuffer(toPrint);
+			}
+		}
+		writeScreenBufferToScreen();
+	}
+	if (opcode == SET_LINE_0x81){
+		*(VIDEO_MEM_START + CURRENT_LINE_OFFSET) = what;
+		writeScreenBufferToScreen();
+
+	}
+	if (opcode == INIT_0X81){
+		*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = (int) (VIDEO_MEM_START + TEXT_OFFSET);
+		*(VIDEO_MEM_START + CURRENT_LINE_OFFSET) = 0;
+		*(VIDEO_MEM_START + COLOR_OFFSET) = DEFAULT_TEXT_COLOR * 256;
+	}
+	//write to kernel screen
+	//character containes color
+}
 void __c_interrupt_130(){}
 void __c_interrupt_131(){}
 void __c_interrupt_132(){}

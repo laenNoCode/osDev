@@ -136,6 +136,7 @@ check_disk_status:
 goto_second_stage:;resets t
        ;let's load that bad boy code
 	;first let's reset the floppy disk we are going to load it from
+	cli
 	reset_floppy:
 		mov ah,0 ;reset drive function
 		mov dl,0;first floppy
@@ -149,8 +150,9 @@ goto_second_stage:;resets t
 		mov ch,0;first cylinder
 		mov cl,2;second sector
 		mov dl,0;first floppy
-		mov al, 54;number of sectors to load
+		mov al, 54;number of sectors to load, MAX, OS IS BEHIND
 		int 0x13
+		sti
 	jmp 0x000:0x1000
 ;checks the floppy data :
 

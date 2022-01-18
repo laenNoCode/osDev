@@ -3,9 +3,23 @@ make_idt:
 	call put_interrupt_record
 	lidt [idt_descriptor]
 	sti
-	int 0x80
+	mov eax, 0x00
+	int 0x81
+
+	
+	mov eax, 0x1
+	mov bl,0x0C
+	int 0x81
+	mov eax, 0x3
+	mov ebx, texte
+	mov edx, 300
+	int 0x81
+	
+	
 	popa
 	ret
+texte:
+	db "wellcome to laen os.", 10, "system is currently in developpement", 10, 0
 
 %macro interrupt 1
 __nasm_interrupt_%1:
@@ -20,7 +34,35 @@ extern __c_interrupt_%1
 
 
 %assign i 0
-%rep 256
+%rep 128
+interrupt i
+%assign i i+1
+%endrep
+;interrupt 128 is particular as it concerns system calls
+__nasm_interrupt_128:
+extern __c_interrupt_128
+	pusha
+	push ebx
+	push eax
+	call __c_interrupt_128
+	pop eax
+	pop ebx
+	popa
+	iret
+__nasm_interrupt_129:
+extern __c_interrupt_129
+	pusha
+	push edx
+	push ebx
+	push eax
+	call __c_interrupt_129
+	pop eax
+	pop ebx
+	pop edx
+	popa
+	iret
+%assign i 0x82
+%rep 126
 interrupt i
 %assign i i+1
 %endrep
