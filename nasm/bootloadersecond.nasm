@@ -10,10 +10,11 @@ db 0xff, 0xff, 0, 0, 0, 0b10010010, 0b11001111, 0; data segment, 0x10, ring 0
 db 0xff, 0xff, 0, 0, 0, 0b11111010, 0b11001111, 0; code segment, 0x18, ring 3 HAS TO BE UPDATED so user can't modify kernel at runtime
 db 0xff, 0xff, 0, 0, 0, 0b11110010, 0b11001111, 0; data segment, 0x20, ring 3 or paging must be put in place
 
-
+pointer_stard:
+dq 0xdeadbeef
 GDT_POINTER:
 	magie_vaudou:
-		dw GDT_POINTER - Global_Descriptor_Table_32 - 1
+		dw pointer_stard - Global_Descriptor_Table_32 - 1
 		dd Global_Descriptor_Table_32
 
 

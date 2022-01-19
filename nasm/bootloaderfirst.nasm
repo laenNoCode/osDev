@@ -5,11 +5,55 @@
 ; nasmw boot.asm -f bin -o boot.bin
 ; partcopy boot.bin 0 200 -f0
 ;gonna load 2nd sector data to sum it 
-[ORG 0x7c00]      ; add to offsets
+     ; add to offsets
+;setting up FAT16 filesystem
+jmp start
+nop
+;in this experiment, we will try to load the os using unreal mode
+BOOT_RECORD:
+db "MSDOS5.0"; fat DOS version
+dw 0x0200; 512, bytes per sector
+db 8;number of blocs per cluster, represents 4kiB
+dw 0x01;only first sector is not in the file system
+db 01; one file allocation table
+dw 0x10;16 root directory entries so that it occupies an entire sector (32x16)
+dw 0xB40;number of blocks on the drive (2880 sectors on floppy)
+db 0xF0;media descriptor, unused
+dw 0x02;a fat only addresses 360 clusters on this drive
+dw 0x12;18 sectors per track
+dw 0x2;2 sides per floppy
+dw 0,0;no hidden blocks
+dw 0,0;no need for larger drive
+dw 0x0;drive number
+db 0x28;extended boot record signature
+dw 0xDEAD, 0xBEEF;volume serial number
+db "YOUEN BEA D"
+db "FAT12   "
 
 
-xor ax,ax
+
+
+start:
+;first, move the first stage to further away in memory
+mov ax, 0x7C0
 mov ds,ax
+mov ax, 0x0010
+mov es, ax
+	
+mov bx,0
+copy_first_stage:
+	mov word ax,[ds:bx]
+	mov word [es:bx], ax
+	inc bx
+	inc bx
+	cmp bx,512
+	jl copy_first_stage
+
+jmp 0x10:start_bootloader_other_address
+start_bootloader_other_address:
+xor ax, ax
+mov ds, ax
+
 mov ax, 0x7000
 mov ss, ax
 mov ax, 0xFFFF ; 65536 bytes of stack, stack will be changed later when all is ok
@@ -148,9 +192,9 @@ goto_second_stage:;resets t
 		xor bx,bx
 		mov ah, 0x2
 		mov ch,0;first cylinder
-		mov cl,2;second sector
+		mov cl,5;forth sector, skip bootloader,fat and root directory
 		mov dl,0;first floppy
-		mov al, 54;number of sectors to load, MAX, OS IS BEHIND
+		mov al, 100;number of sectors to load, MAX, OS IS BEHIND
 		int 0x13
 		sti
 	jmp 0x000:0x1000

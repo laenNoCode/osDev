@@ -1,5 +1,6 @@
 floppy.flp
 floppy/*
 bin/*
+o/*
 bochs*
 .idea
