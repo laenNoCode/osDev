@@ -178,6 +178,8 @@ check_disk_status:
 	mov bx,18
 	mov al,dl
 	jmp hang
+
+
 goto_second_stage:;resets t
        ;let's load that bad boy code
 	;first let's reset the floppy disk we are going to load it from

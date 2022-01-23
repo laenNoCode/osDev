@@ -94,4 +94,4 @@ idt_records:
 
 idt_descriptor:
 	dw 0x7ff;c'etait en bytes, pas en nombre d'entrées
-	dq idt_records
+	dd idt_records

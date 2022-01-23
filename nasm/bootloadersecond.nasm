@@ -3,23 +3,131 @@
 %define STACK_32 0x7000000
 jmp teste
 
-Global_Descriptor_Table_32:
-db 0, 0, 0, 0, 0, 0, 0, 0
-db 0xff, 0xff, 0, 0, 0, 0b10011010, 0b11001111, 0; code segment, 0x08, ring 0
-db 0xff, 0xff, 0, 0, 0, 0b10010010, 0b11001111, 0; data segment, 0x10, ring 0
-db 0xff, 0xff, 0, 0, 0, 0b11111010, 0b11001111, 0; code segment, 0x18, ring 3 HAS TO BE UPDATED so user can't modify kernel at runtime
-db 0xff, 0xff, 0, 0, 0, 0b11110010, 0b11001111, 0; data segment, 0x20, ring 3 or paging must be put in place
-
-pointer_stard:
-dq 0xdeadbeef
-GDT_POINTER:
-	magie_vaudou:
-		dw pointer_stard - Global_Descriptor_Table_32 - 1
-		dd Global_Descriptor_Table_32
 
 
 
+
+
+
+
+print_ram_entry:
+	mov ax,di
+	mov dx,0
+	mov bx, 24
+	div bx
+	add ax,1
+	mov bx,160
+	mov dx,0
+	mul bx
+	mov bx,ax
+	mov al, '0'
+	call print_char
+	add bx,2
+	mov al, 'x'
+	call print_char
+	add bx, 32
+	%assign a 0
+	%rep 2
+		mov eax, [es:di + a]
+		%rep 8
+			mov cx,16
+			mov edx,0
+			div ecx
+			call print_hex
+			sub ebx,2
+		%endrep
+		%assign a a+4
+	%endrep
+	add bx, 36
+	mov al, '0'
+	call print_char
+	add bx,2
+	mov al, 'x'
+	call print_char
+	add bx, 32
+	%rep 2
+		mov eax, [es:di + a]
+		%rep 8
+			mov cx,16
+			mov edx,0
+			div ecx
+			call print_hex
+			sub ebx,2
+		%endrep
+		%assign a a+4
+	%endrep
+	add bx,36
+	mov byte dl, [es:di + a]
+	call print_hex
+	ret
+print_char:
+	pusha
+	push es
+	mov dx, ax
+	mov ax,0xB800
+	mov es,ax
+	mov [es:bx], dl
+	pop es
+	popa
+	ret
+print_hex:
+	pusha
+	push es
+	mov ax,0xB800
+	mov es,ax
+	mov ax,dx
+	cmp al,10
+	jl print_hex_dec
+	add al, 'A' - '0' - 10
+	print_hex_dec:
+		add al, '0'
+	mov [es:bx], al
+	pop es
+	popa
+	ret
+
+get_installed_ram:
+	mov ebx, 0x000
+	mov ax, 0x10
+	mov es,ax
+	mov di, 0x00
+	mov edx, 0x534D4150
+	mov eax, 0xE820 
+	mov ecx, 0x24
+	int 0x15
+	pusha
+	push es
+		call print_ram_entry
+	pop es
+	popa
+	loop_get_installed_ram:
+		add di,24
+		mov edx, 0x534D4150
+		mov ecx,24
+		mov eax, 0xE820 
+		int 0x15
+		pusha
+		push es
+			call print_ram_entry
+		pop es
+		popa
+		cmp ebx, 0
+		jne loop_get_installed_ram
+	ret
 teste:
+	push es
+	pusha
+	mov cx,80*25
+	mov bx, 0
+	mov ax,0xB800
+	mov es,ax
+	clear_screen_loop:
+		mov byte [es:bx], ' '
+		add bx,2
+	loop clear_screen_loop
+	popa
+	pop es
+	call get_installed_ram
 	cli
 	lgdt [GDT_POINTER]
 	mov eax,cr0
@@ -28,6 +136,18 @@ teste:
 
 	mov cr0,eax
 	jmp 0x8:pmode
+Global_Descriptor_Table_32:
+db 0, 0, 0, 0, 0, 0, 0, 0
+db 0xff, 0xff, 0, 0, 0, 0b10011010, 0b11001111, 0; code segment, 0x08, ring 0
+db 0xff, 0xff, 0, 0, 0, 0b10010010, 0b11001111, 0; data segment, 0x10, ring 0
+db 0xff, 0xff, 0, 0, 0, 0b11111010, 0b11001111, 0; code segment, 0x18, ring 3 HAS TO BE UPDATED so user can't modify kernel at runtime
+db 0xff, 0xff, 0, 0, 0, 0b11110010, 0b11001111, 0; data segment, 0x20, ring 3 or paging must be put in place
+
+
+GDT_POINTER:
+	magie_vaudou:
+		dw GDT_POINTER - Global_Descriptor_Table_32 - 1
+		dd Global_Descriptor_Table_32
 [bits 32]
 
 
@@ -48,7 +168,6 @@ pmode:
 	call 0X1800
 
 	jmp hang
-
 
 print_register:
 	;save all the data
