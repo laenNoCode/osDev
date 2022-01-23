@@ -2,19 +2,87 @@
 #define CHANGE_CURSOR_COLOR_0X81 1
 #define WRITE_SINGLE_0X81 2
 #define WRITE_BUFFER_0x81 3
-
-#define SET_LINE_0x81 4
-
-#define DEFAULT_TEXT_COLOR 0x02
-
-#define VIDEO_MEM_START (int*) 0x7000004
+ #define SET_LINE_0x81 4
+ #define DEFAULT_TEXT_COLOR 0x02
+ #define VIDEO_MEM_START (int*) 0x7000004
 #define CURRENT_LINE_OFFSET 0
 #define COLOR_OFFSET 1
 #define CURRENT_ADDRESS_OFFSET 2
 #define TEXT_OFFSET 3
-
-
-#define MAX_TEXT_ADDRESS 0x7100004
+ #define MAX_TEXT_ADDRESS 0x7100004
+#include "keyboard.c"
+ void writeToScreenBuffer(int what){
+	short* current_position = (short*)*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET);
+	int line = *(VIDEO_MEM_START + CURRENT_LINE_OFFSET);
+	if (what == '\n'){
+		int currentAddress =(int) *(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET);
+		currentAddress += 80*2 - (currentAddress - (int) (VIDEO_MEM_START + TEXT_OFFSET)) % (80*2);
+		*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = currentAddress;
+		return;
+	}
+	*(current_position++) = (short) (*(VIDEO_MEM_START + COLOR_OFFSET) + ((char) what));
+	*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = (int) current_position;
+	int line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
+	while ( (int)current_position - line_mem_position >= 80*25*2 ){
+		line ++;
+		*(VIDEO_MEM_START + CURRENT_LINE_OFFSET) = line;
+		line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
+	}
+}
+void writeScreenBufferToScreen(){
+	//write actual data to screen
+		//text offset is the start of the memory, but used in init for current position
+		int line = *(VIDEO_MEM_START + CURRENT_LINE_OFFSET);
+		int line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
+		short* text_memory = (short*) line_mem_position;
+		short* screen_memory = (short*)0xB8000;
+		for (int i = 0; i < 80*25; i++){
+			*(screen_memory++) = *(text_memory ++);
+		}
+}
+void writeBufferToScreenBuffer(int what, int count){
+	char* whatPos = (char*) what;
+		for (int i = 0; i < count; i++){
+			char toPrint = whatPos[i];
+			if (toPrint == 0){
+				break;
+			}
+			else if (toPrint == '\n'){
+				int currentAddress =(int) *(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET);
+				currentAddress += 80*2 - (currentAddress - (int) (VIDEO_MEM_START + TEXT_OFFSET)) % (80*2);
+				*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = currentAddress;
+			}
+			else{
+				writeToScreenBuffer(toPrint);
+			}
+		}
+}
+void print_hex(unsigned char value){
+ 	char toFill[5];
+	toFill[0] = '0';
+	toFill[1] = 'x';
+	toFill[2] = (value/16) >= 10 ? value / 16 + 'A' - 10 : value / 16 + '0';
+	toFill[3] = (value%16) >= 10 ? value % 16 + 'A' - 10 : value % 16 + '0';
+	toFill[4] = ' ';
+	writeBufferToScreenBuffer((int) toFill, 5);
+	writeScreenBufferToScreen();
+}
+ static inline void outb(short port, char val)
+{
+    asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
+    /* There's an outb %al, $imm8  encoding, for compile-time constant port numbers that fit in 8b.  (N constraint).
+     * Wider immediate constants would be truncated at assemble-time (e.g. "i" constraint).
+     * The  outb  %al, %dx  encoding is the only option for all other cases.
+     * %1 expands to %dx because  port  is a uint16_t.  %w1 could be used if we had the port number a wider C type */
+}
+static inline char inb(short port)
+{
+    char ret;
+    asm volatile ( "inb %1, %0"
+                   : "=a"(ret)
+                   : "Nd"(port) );
+    return ret;
+}
 void __c_interrupt_0(){}
 void __c_interrupt_1(){}
 void __c_interrupt_2(){}
@@ -53,8 +121,43 @@ void __c_interrupt_28(){}
 void __c_interrupt_29(){}
 void __c_interrupt_30(){}
 void __c_interrupt_31(){}
-void __c_interrupt_32(){}
-void __c_interrupt_33(){}
+void __c_interrupt_32(){
+	outb(0x20, 0x20);
+	//print_hex(32);
+}
+void __c_interrupt_33(){
+	static int cap = 0;
+	//static int E0Modifier = 0; // will ignore E0 for now
+	outb(0x20, 0x20);
+	unsigned char scanned = inb(0x60);
+	
+	if (scanned == 0x2A || scanned == 0xAA || scanned == 0x36 || scanned == 0xB6 || scanned == 0xBA)
+	{
+		cap = 1 - cap;
+		if (scanned == 0xBA){
+		//handle capsLock
+		}
+		return;
+	}
+	if (scanned < sizeof(keyFromCodes_nocap))
+	{
+		if (cap){
+			writeToScreenBuffer(keyFromCodes_cap[scanned]);
+		}
+		else{
+			writeToScreenBuffer(keyFromCodes_nocap[scanned]);
+		}
+		writeScreenBufferToScreen();
+	}else{
+		if(scanned <= 0x80 || scanned >= sizeof(keyFromCodes_cap) + 0x80)
+		print_hex(scanned);
+	}
+	if (scanned == 0x48){//up key pressed
+		
+
+	}
+	
+}
 void __c_interrupt_34(){}
 void __c_interrupt_35(){}
 void __c_interrupt_36(){}
@@ -127,15 +230,15 @@ void __c_interrupt_102(){}
 void __c_interrupt_103(){}
 void __c_interrupt_104(){}
 void __c_interrupt_105(){}
-void __c_interrupt_106(){}
-void __c_interrupt_107(){}
-void __c_interrupt_108(){}
-void __c_interrupt_109(){}
-void __c_interrupt_110(){}
-void __c_interrupt_111(){}
-void __c_interrupt_112(){}
-void __c_interrupt_113(){}
-void __c_interrupt_114(){}
+void __c_interrupt_106() {}
+void __c_interrupt_107() {}
+void __c_interrupt_108() {}
+void __c_interrupt_109() {}
+void __c_interrupt_110() {}
+void __c_interrupt_111() {}
+void __c_interrupt_112() {}
+void __c_interrupt_113() {}
+void __c_interrupt_114() {}
 void __c_interrupt_115(){}
 void __c_interrupt_116(){}
 void __c_interrupt_117(){}
@@ -158,30 +261,6 @@ int __c_interrupt_128(int opcode,int opcode2){
 	__asm__("movb %al,1(%EBX) ");
 	return opcode;
 }
-
-void writeToScreenBuffer(int what){
-	short* current_position = (short*)*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET);
-	int line = *(VIDEO_MEM_START + CURRENT_LINE_OFFSET);
-	*(current_position++) = (short) (*(VIDEO_MEM_START + COLOR_OFFSET) + ((char) what));
-	*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = (int) current_position;
-	int line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
-	while ( (int)current_position - line_mem_position >= 80*25*2 ){
-		line ++;
-		*(VIDEO_MEM_START + CURRENT_LINE_OFFSET) = line;
-		line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
-	}
-}
-void writeScreenBufferToScreen(){
-	//write actual data to screen
-		//text offset is the start of the memory, but used in init for current position
-		int line = *(VIDEO_MEM_START + CURRENT_LINE_OFFSET);
-		int line_mem_position = line * 80 * 2 + (int) (VIDEO_MEM_START + TEXT_OFFSET);
-		short* text_memory = (short*) line_mem_position;
-		short* screen_memory = (short*)0xB8000;
-		for (int i = 0; i < 80*25; i++){
-			*(screen_memory++) = *(text_memory ++);
-		}
-}
 void __c_interrupt_129(int opcode,  int what, int count){
 	if (opcode == CHANGE_CURSOR_COLOR_0X81){
 		*(VIDEO_MEM_START + COLOR_OFFSET) = what * 256;
@@ -191,28 +270,13 @@ void __c_interrupt_129(int opcode,  int what, int count){
 		writeScreenBufferToScreen();
 	}
 	if (opcode == WRITE_BUFFER_0x81){
-		char* whatPos = (char*) what;
-		for (int i = 0; i < count; i++){
-			char toPrint = whatPos[i];
-			if (toPrint == 0){
-				break;
-			}
-			else if (toPrint == '\n'){
-				int currentAddress =(int) *(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET);
-				currentAddress += 80*2 - (currentAddress - (int) (VIDEO_MEM_START + TEXT_OFFSET)) % (80*2);
-				*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = currentAddress;
-			}
-			else{
-				writeToScreenBuffer(toPrint);
-			}
-		}
+		writeBufferToScreenBuffer(what, count);
 		writeScreenBufferToScreen();
 	}
 	if (opcode == SET_LINE_0x81){
 		*(VIDEO_MEM_START + CURRENT_LINE_OFFSET) = what;
 		writeScreenBufferToScreen();
-
-	}
+ 	}
 	if (opcode == INIT_0X81){
 		*(VIDEO_MEM_START + CURRENT_ADDRESS_OFFSET) = (int) (VIDEO_MEM_START + TEXT_OFFSET);
 		*(VIDEO_MEM_START + CURRENT_LINE_OFFSET) = 0;

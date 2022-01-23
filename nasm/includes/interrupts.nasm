@@ -1,3 +1,4 @@
+
 make_idt:
 	pusha
 	call put_interrupt_record
@@ -14,10 +15,11 @@ make_idt:
 	mov ebx, texte
 	mov edx, 300
 	int 0x81
-	
+	call keyboard_init
 	
 	popa
 	ret
+
 texte:
 	db "wellcome to laen os.", 10, "system is currently in developpement", 10, 0
 
@@ -92,4 +94,4 @@ idt_records:
 
 idt_descriptor:
 	dw 0x7ff;c'etait en bytes, pas en nombre d'entrées
-	dw idt_records
+	dq idt_records

@@ -37,6 +37,7 @@ start:
 ;first, move the first stage to further away in memory
 mov ax, 0x7C0
 mov ds,ax
+mov [DISK_LOADED_FROM], dl
 mov ax, 0x0010
 mov es, ax
 	
@@ -194,7 +195,7 @@ goto_second_stage:;resets t
 		mov ch,0;first cylinder
 		mov cl,5;forth sector, skip bootloader,fat and root directory
 		mov dl,0;first floppy
-		mov al, 100;number of sectors to load, MAX, OS IS BEHIND
+		mov al, 70;number of sectors to load, MAX, OS IS BEHIND
 		int 0x13
 		sti
 	jmp 0x000:0x1000
@@ -361,8 +362,9 @@ print_register:
         pop ax
         sti
         ret
-
 hang: jmp hang
+DISK_LOADED_FROM:
+db 0
 is_hdd: db 0
 times 510 - ($ -$$) db 0
 db 0x55
