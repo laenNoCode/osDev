@@ -139,6 +139,7 @@ void __c_interrupt_33(){
 		}
 		return;
 	}
+	
 	if (scanned < sizeof(keyFromCodes_nocap))
 	{
 		if (cap){
@@ -149,6 +150,19 @@ void __c_interrupt_33(){
 		}
 		writeScreenBufferToScreen();
 	}else{
+		if (scanned == 0x56){
+			if (cap){
+				scanned = '>';
+			}else{
+				scanned = '<';
+			}
+			writeToScreenBuffer(scanned);
+			writeScreenBufferToScreen();
+			return;
+		}
+		if (scanned == 0xD6){
+			return;
+		}
 		if(scanned <= 0x80 || scanned >= sizeof(keyFromCodes_cap) + 0x80)
 		print_hex(scanned);
 	}

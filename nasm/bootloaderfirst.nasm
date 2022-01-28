@@ -365,9 +365,9 @@ print_register:
         sti
         ret
 hang: jmp hang
+is_hdd: db 0
+times 509 - ($ -$$) db 0
 DISK_LOADED_FROM:
 db 0
-is_hdd: db 0
-times 510 - ($ -$$) db 0
 db 0x55
 db 0xAA

@@ -159,13 +159,14 @@ pmode:
 	mov fs,ax
 	mov gs,ax
 	mov esp,STACK_32
-	mov ax,0xABCD
+	mov ax,0
+	mov  byte al,[0x100 + 509]; drive we boot from !
+	mov byte [current_drive], al; will be located at 0x17FF
 	mov bx,0
 	mov cl,0x40
 	mov dx,4
-	mov al, 0x10
 	call print_register
-	call 0X1800
+	;call 0X1800
 
 	jmp hang
 
@@ -228,12 +229,11 @@ print_register:
 	ret
 
 hang: jmp hang
-is_hdd: db 0
 tmp_data: dw 0
 ;GDT
 
 
 
 times 4*512 - ($ -$$)  - 1 db 0x0
-db 0xFF
+current_drive: db 0
 ;next address will be located at 0x1800
