@@ -9,7 +9,7 @@ bin/tmp/bootloadersecond.bin: nasm/bootloadersecond.nasm
 	nasm -f bin -o bin/tmp/bootloadersecond.bin nasm/bootloadersecond.nasm
 bin/tmp/bootloadersecondp2.bin: o/bootloadersecondp2.o o/interrupts.o linker/linkerscript.ld
 	ld -o bin/tmp/bootloadersecondp2.bin o/bootloadersecondp2.o o/interrupts.o -m elf_i386 -T linker/linkerscript.ld
-o/interrupts.o: c/interrupts.c c/keyboard.c
+o/interrupts.o: c/interrupts.c c/keyboard.c c/inout.c c/pci.c c/print.c
 	gcc -fno-pie -o o/interrupts.o -c c/interrupts.c -m32 -O1
 o/bootloadersecondp2.o: nasm/bootloadersecondp2.nasm nasm/includes/interrupts.nasm nasm/includes/keyboard.nasm
 	nasm -f elf -o o/bootloadersecondp2.o nasm/bootloadersecondp2.nasm

@@ -1,4 +1,4 @@
-
+extern pciPrintDevices
 make_idt:
 	pusha
 	call put_interrupt_record
@@ -15,6 +15,7 @@ make_idt:
 	mov ebx, texte
 	mov edx, 300
 	int 0x81
+	call pciPrintDevices
 	call keyboard_init
 	
 	popa

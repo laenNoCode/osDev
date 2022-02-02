@@ -24,7 +24,7 @@ dw 0x12;18 sectors per track
 dw 0x2;2 sides per floppy
 dw 0,0;no hidden blocks
 dw 0,0;no need for larger drive
-dw 0x0;drive number
+dw 0x80;drive number
 db 0x28;extended boot record signature
 dw 0xDEAD, 0xBEEF;volume serial number
 db "YOUEN BEA D"
@@ -38,7 +38,7 @@ start:
 mov ax, 0x7C0
 mov ds,ax
 mov [DISK_LOADED_FROM], dl
-mov ax, 0x0010
+mov ax, 0x050
 mov es, ax
 	
 mov bx,0
@@ -50,11 +50,11 @@ copy_first_stage:
 	cmp bx,512
 	jl copy_first_stage
 
-jmp 0x10:start_bootloader_other_address
+jmp 0x50:start_bootloader_other_address
 start_bootloader_other_address:
-xor ax, ax
+mov ax,0x50
 mov ds, ax
-
+mov es, ax
 mov ax, 0x7000
 mov ss, ax
 mov ax, 0xFFFF ; 65536 bytes of stack, stack will be changed later when all is ok
@@ -164,43 +164,82 @@ check_a20__exit:
 	ret
 ;jumps to second stage bootloader
 ;
-;
-check_disk_status:
-	xor ax,ax
-	xor dx,dx
-	xor cx,cx
-	mov es,ax
-	mov di,ax
-	mov ah, 0x08
-	mov dl,0x80
-	int 0x13
-	xor ax,ax
-	mov bx,18
-	mov al,dl
-	jmp hang
+
 
 
 goto_second_stage:;resets t
        ;let's load that bad boy code
 	;first let's reset the floppy disk we are going to load it from
 	cli
+	;let's get the drive CHS info
+	setup_and_check_drive_type:
+		mov ax,0x50
+		mov es,ax
+		mov ds,ax
+		xor ax, ax
+		mov al,[DISK_LOADED_FROM]
+		cmp al,0x80
+		je load_from_lba
+
 	reset_floppy:
 		mov ah,0 ;reset drive function
-		mov dl,0;first floppy
+		mov dl,[DISK_LOADED_FROM];first floppy
 		int 0x13
 	jc reset_floppy
 	load_floppy_code:
 		mov ax,0x100 ;code will go into 1000h
 		mov es,ax
-		xor bx,bx
+		xor ax,ax
+
+		xor bx,bx; starts on es:00
 		mov ah, 0x2
 		mov ch,0;first cylinder
 		mov cl,5;forth sector, skip bootloader,fat and root directory
-		mov dl,0;first floppy
-		mov al, 70;number of sectors to load, MAX, OS IS BEHIND
+		mov dh,0;head number 0
+		mov dl,[DISK_LOADED_FROM];first floppy
+		mov al, 50;number of sectors to load, MAX, OS IS BEHIND
 		int 0x13
+		mov bx, (80*2 + 16) *2
+		call print_register
 		sti
+	loaded:
+		mov ax,[es:00]
+		mov bx,160
+		call print_register
+	jump_second:
 	jmp 0x000:0x1000
+	load_from_lba:;checks if ext are here
+		mov dword [bloffset], 0x0
+		mov ax,0x100
+		mov es,ax
+		mov bx,0
+		find_base_ptr:
+		mov ax,0x50
+		mov ds,ax
+		mov si, DAP
+		mov ax,0
+		mov ah,0x42
+		mov dl,[DISK_LOADED_FROM]
+		int 0x13
+		add bx, 12
+		add dword [bloffset],1
+		cmp byte [es:laenSign], 0x1A
+		jne find_base_ptr
+		add dword [bloffset], 3
+		mov dword [blread], 50
+		mov ah, 0x42
+		mov dl,[DISK_LOADED_FROM]
+		int 0x13
+		jmp loaded
+
+DAP:
+	db 0x10;size of dap
+	db 0; should be 0
+blread:
+	dw 1;number of sectors to read
+	dw 0x00,0x100 ;reads data to 0x1000
+bloffset:
+	dd 00,0
 ;checks the floppy data :
 
 ;        mov ah,0 ; reset drive
@@ -218,7 +257,6 @@ goto_second_stage:;resets t
 ;        mov ah, 0x2; read instruction
 ;        mov al,0xFF; 
 ;        ;18 sectors per track, 80 tracks per side and two sides, for a total of 1,474,560 
-;
 ;
 ;
 ;;load_data:
@@ -366,8 +404,10 @@ print_register:
         ret
 hang: jmp hang
 is_hdd: db 0
-times 509 - ($ -$$) db 0
+times 508 - ($ -$$) db 0
 DISK_LOADED_FROM:
 db 0
+laenSign:
+db 0x1A;laen signature
 db 0x55
 db 0xAA

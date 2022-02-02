@@ -3,7 +3,44 @@
 %define STACK_32 0x7000000
 jmp teste
 
+print_register_16:
+        cli
+        push ax
+        push bx 
 
+        push ax
+        ;sets the es to be graphical memory
+        mov ax, 0xB800
+        mov es, ax
+        pop ax
+;       mov bx,4
+		add bx,6
+        push bx
+        mov cx,4
+        
+        loop_print_register_16:
+			mov dx,0
+			mov bx, 0x10
+			div  bx
+			cmp dl,10
+			jl low_print_register_16
+				add dl, 'A' - '0' - 10
+			low_print_register_16:
+			add dl,'0'
+			pop bx
+			push ax
+        	        mov byte [es:bx],dl
+			dec bx
+			dec bx
+			pop ax
+			push bx
+        loop loop_print_register_16
+        pop bx
+;
+        pop bx
+        pop ax
+        sti
+        ret
 
 
 
@@ -114,9 +151,10 @@ get_installed_ram:
 		cmp ebx, 0
 		jne loop_get_installed_ram
 	ret
+hang_16:jmp hang_16
+
+
 teste:
-	push es
-	pusha
 	mov cx,80*25
 	mov bx, 0
 	mov ax,0xB800
@@ -125,15 +163,15 @@ teste:
 		mov byte [es:bx], ' '
 		add bx,2
 	loop clear_screen_loop
-	popa
-	pop es
 	call get_installed_ram
 	cli
+	xor ax,ax
+	mov ds,ax
+	mov es,ax
 	lgdt [GDT_POINTER]
 	mov eax,cr0
 	or eax,1
 	;sgdt [gdt2]
-
 	mov cr0,eax
 	jmp 0x8:pmode
 Global_Descriptor_Table_32:
@@ -150,7 +188,6 @@ GDT_POINTER:
 		dd Global_Descriptor_Table_32
 [bits 32]
 
-
 pmode:
 	mov eax, 0x10
 	mov ds,ax
@@ -166,7 +203,7 @@ pmode:
 	mov cl,0x40
 	mov dx,4
 	call print_register
-	;call 0X1800
+	call 0X1800
 
 	jmp hang
 
